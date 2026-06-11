@@ -10,7 +10,7 @@ Sourcetype, index, and key prefix are all user-configurable per input
 instance - this input is dataset-agnostic.
 
 Author: Cloudflare, Inc.
-Version: 0.1.0 (prototype - not for direct Splunkbase publication)
+Version: 0.1.0
 """
 
 import os

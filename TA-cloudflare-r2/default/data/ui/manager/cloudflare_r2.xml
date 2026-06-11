@@ -60,7 +60,7 @@
         <element name="bucket_name" type="textfield" label="R2 Bucket Name">
           <view name="edit"/>
           <view name="create"/>
-          <key name="exampleText">e.g. cloudflare-managed-c9c00975</key>
+          <key name="exampleText">e.g. my-logpush-bucket</key>
           <key name="requiredIfVisible">true</key>
         </element>
 

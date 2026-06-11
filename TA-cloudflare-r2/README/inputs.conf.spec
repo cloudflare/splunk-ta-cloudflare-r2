@@ -18,7 +18,7 @@ secret_access_key = <value>
 
 bucket_name = <value>
 * Name of the R2 bucket containing Cloudflare Logpush files.
-* Example: cloudflare-managed-c9c00975
+* Example: my-logpush-bucket
 * Required.
 
 verify_ssl = <true|false>

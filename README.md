@@ -3,7 +3,8 @@
 A Splunk Technology Add-on (TA) that ingests Cloudflare Logpush log files from
 Cloudflare R2 via a Python modular input using the S3-compatible API.
 
-**AppInspect**: 0 errors | 0 failures | 0 future_failures
+**AppInspect**: 0 errors | 0 failures | 0 future_failures  
+**Tested on**: Splunk Enterprise 10.4.0 (Python 3.13)
 
 ---
 
@@ -12,9 +13,10 @@ Cloudflare R2 via a Python modular input using the S3-compatible API.
 The [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876) does not work
 with Cloudflare R2. It calls `sts.get_caller_identity()` to validate credentials
 before saving them. R2 is S3-compatible but has no AWS STS service, so the add-on
-rejects R2 credentials unconditionally. This is a confirmed dead-end as of v8.1.2.
+rejects R2 credentials unconditionally. This is a confirmed dead-end as of v8.1.2
+regardless of configuration - including the Generic S3 input with custom `host_name`.
 
-This TA solves the gap with a purpose-built modular input that uses SigV4 auth
+This add-on solves the gap with a purpose-built modular input that uses SigV4 auth
 and path-style S3 calls directly - no STS dependency.
 
 ---
@@ -31,6 +33,8 @@ Cloudflare R2 bucket  →  ListObjectsV2 + GetObject  →  gunzip  →  Splunk i
 - One input instance per bucket/prefix, each with its own sourcetype and index
 - Checkpointing via `StartAfter` - only new files are processed after each poll
 - Checkpoints survive Splunk restarts - zero duplicate events
+- Multi-account: each input has independent credentials, so multiple Cloudflare
+  accounts can feed a single Splunk instance
 
 ---
 
@@ -53,13 +57,16 @@ Go to **Settings > Data Inputs > Cloudflare R2 Log Ingestion > New**.
 | R2 Access Key ID | Generate via: Cloudflare Dashboard > R2 > Manage R2 API Tokens |
 | R2 Secret Access Key | Shown once at token creation. Object Read permission required. |
 | R2 Bucket Name | Name of the R2 bucket containing Logpush files |
-| Key Prefix | Subfolder to read from (e.g. `gateway_dns/`). Leave blank for all files. |
+| Key Prefix | Subfolder to scope to one dataset (e.g. `gateway_dns/`). Leave blank for all files. |
 | Polling Interval | How often to check for new files, in seconds. Default: 300 |
-| Verify SSL Certificate | Uncheck only if your network performs TLS inspection |
+| Verify SSL Certificate | Uncheck only if your network performs TLS inspection on outbound traffic |
 | Source type | Splunk sourcetype for events (see table below) |
 | Index | Splunk index to store events |
 
-### Sourcetype mapping (for use with [Cloudflare App for Splunk](https://splunkbase.splunk.com/app/4501))
+### Sourcetype mapping
+
+For use with the [Cloudflare App for Splunk](https://splunkbase.splunk.com/app/4501)
+(which provides dashboards and field extractions for Cloudflare log data):
 
 | Logpush Dataset | Key Prefix | Sourcetype |
 |---|---|---|
@@ -76,13 +83,13 @@ Create one input per dataset, each pointing at a different prefix:
 
 ```ini
 [cloudflare_r2://my_gateway_dns]
-bucket_name = cloudflare-managed-c9c00975
+bucket_name = my-logpush-bucket
 key_prefix = gateway_dns/
 sourcetype = cloudflare:dns
 index = cloudflare_logs
 
 [cloudflare_r2://my_http_requests]
-bucket_name = cloudflare-managed-c9c00975
+bucket_name = my-logpush-bucket
 key_prefix = http_requests/
 sourcetype = cloudflare:json
 index = cloudflare_logs
@@ -109,10 +116,10 @@ access_key_id = <account_b_key>
 ## How Logpush + R2 works
 
 1. Configure a [Cloudflare Logpush job](https://developers.cloudflare.com/logs/logpush/)
-   to write to an R2 bucket (use the automatic R2 setup in the dashboard)
-2. Logpush writes gzipped NDJSON files every ~30 seconds:
+   to write to an R2 bucket (the automatic R2 setup in the dashboard is the easiest path)
+2. Logpush writes gzipped NDJSON files roughly every 30 seconds:
    `gateway_dns/20260608/20260608T120000Z_20260608T120030Z_abc123.log.gz`
-3. This TA polls R2 on your configured interval, downloads new files,
+3. This add-on polls R2 on your configured interval, downloads new files,
    decompresses them, and sends each JSON line as a Splunk event
 
 ---
@@ -136,26 +143,21 @@ splunk clean inputdata cloudflare_r2
 
 ## Known limitations
 
-- **Credentials stored in inputs.conf** - the secret access key is not encrypted
-  in this prototype version. A production deployment should implement a custom
-  REST handler to store credentials via Splunk's `storage/passwords` API.
-  This is documented in [HANDOFF.md](TA-cloudflare-r2/HANDOFF.md).
-- **No Splunk Cloud validation** - tested on Splunk Enterprise 10.4.0 only.
+- **Credentials stored in inputs.conf** - the secret access key is stored in
+  `inputs.conf` in the current version. A future version should implement a
+  custom REST handler to store credentials via Splunk's `storage/passwords` API.
+  See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
+- **No Splunk Cloud validation** - tested on Splunk Enterprise only.
 
 ---
 
-## Status
+## Contributing
 
-This is a **reference prototype** intended for handoff to Cloudflare's Splunk
-partnership team and their third-party vendor for productionization and official
-Splunkbase publication.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Do not publish this add-on to Splunkbase under a personal account.** Code
-written by a Cloudflare employee in the course of their work is Cloudflare IP
-and requires legal/management sign-off before any public release.
-See [HANDOFF.md](TA-cloudflare-r2/HANDOFF.md) for full details.
+## Security
 
----
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
 ## License
 

@@ -18,6 +18,16 @@ __pycache__/
 TA-cloudflare-r2/metadata/local.meta
 TA-cloudflare-r2/local/
 
+# Build artifacts
+*.tgz
+
+# Wrangler cache
+.wrangler/
+
+# Internal working documents (not for public repo)
+floss-ticket-draft.md
+.splunkignore
+
 # Session notes (internal only, not part of the TA)
 new-session-prompt.md
 end-to-end-test-prompt.md
