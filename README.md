@@ -69,8 +69,8 @@ In the add-on's UI, open **Configuration > Cloudflare R2 Account > Add**.
 | Cloudflare Account ID | 32-character hex string from your Cloudflare dashboard URL |
 | R2 Access Key ID | Generate via: Cloudflare Dashboard > R2 > Manage R2 API Tokens |
 | R2 Secret Access Key | Shown once at token creation. Stored encrypted via `storage/passwords`. |
-| Verify SSL certificate | On-prem only. Uncheck only if your network performs TLS inspection on outbound traffic |
-| CA bundle path (on-prem only) | On-prem only. Path to your inspection CA bundle (preferred over disabling verification) |
+| Verify SSL certificate | Keep enabled (default). For TLS-inspection networks, keep it on and set the CA bundle path below rather than disabling it. Unchecking disables certificate validation entirely (insecure). |
+| CA bundle path (on-prem only) | Absolute path, on the Splunk host, to your inspection proxy's root CA (PEM). Use when outbound traffic is TLS-inspected; preferred over disabling verification. Not usable on Splunk Cloud (locked filesystem). See [TLS inspection and CA bundles](#tls-inspection-and-ca-bundles). |
 
 The R2 API token needs **Object Read** permission on the target bucket.
 
@@ -143,6 +143,46 @@ key_prefix = gateway_dns/
 
 ---
 
+## TLS inspection and CA bundles
+
+By default the add-on verifies R2's TLS certificate against the system trust
+store and needs no extra configuration — R2 endpoints present publicly trusted
+certificates.
+
+If the Splunk host's outbound traffic passes through a **TLS-inspection proxy**
+(an enterprise "SSL inspection" gateway — for example a corporate Zero Trust
+gateway, Zscaler, Netskope, or a firewall doing SSL decryption), that proxy
+re-signs connections with its own root CA. Because that root is not in the
+default trust store, polls fail with:
+
+```
+[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed:
+self signed certificate in certificate chain
+```
+
+To fix this **without** weakening security:
+
+1. Obtain your proxy's **root CA certificate** in PEM format from your security
+   or network team — the same root your organization already distributes to
+   browsers and operating systems for inspection.
+2. Place it on the Splunk host that runs the input (search head / heavy
+   forwarder / IDM), readable by the Splunk user, e.g.
+   `$SPLUNK_HOME/etc/auth/r2_inspection_ca.pem`.
+3. In the Account, keep **Verify SSL certificate** enabled and set **CA bundle
+   path** to that absolute path.
+
+Notes:
+
+- The CA bundle is **specific to your environment**. This add-on does not ship
+  one, and another organization's CA will not work for you.
+- **Splunk Cloud** has a locked filesystem, so a CA bundle path cannot be used
+  there. Splunk Cloud egress is not typically TLS-inspected, so the default
+  verification just works.
+- Unchecking **Verify SSL certificate** disables certificate validation
+  entirely (insecure) and should only be a temporary diagnostic step.
+
+---
+
 ## How Logpush + R2 works
 
 1. Configure a [Cloudflare Logpush job](https://developers.cloudflare.com/logs/logpush/)
@@ -167,8 +207,11 @@ curl -k -u admin:'<your-admin-password>' -X DELETE \
   https://localhost:8089/servicesNS/nobody/TA_cloudflare_r2/storage/collections/data/TA_cloudflare_r2_processed_keys
 ```
 
-This re-ingests only the current **Lookback window (days)**, not all history —
-Logpush objects older than the window are no longer listed in R2.
+The next poll re-ingests only objects within the current **Lookback window
+(days)** — objects older than that window fall below the add-on's lookback
+floor and are not re-listed. Any objects in the window that were already
+indexed are ingested again, producing duplicate events for that window, so
+reset only when you intend to backfill.
 
 ---
 
