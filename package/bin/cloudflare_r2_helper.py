@@ -8,7 +8,7 @@ Contract (UCC globalConfig + inputHelperModule path, ucc-gen 5.52.0):
 the generated input script imports the TOP-LEVEL functions `validate_input`
 and `stream_events` from this module (NOT self-methods).
 
-Design (see internal UCC_EXECUTION_PLAN.md 4.6 / 4.6.1):
+Design:
   - Credentials come from the UCC "account" (secret_access_key is encrypted in
     storage/passwords); read here via solnlib.conf_manager.
   - R2 access is the pure standard-library client in r2client.py (no boto3).
