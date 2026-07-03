@@ -134,7 +134,9 @@ def _kv_collection(session_key):
     can abort WITHOUT emitting (emitting without the dedupe set would dup)."""
     rc = SplunkRestClient(session_key, ADDON_NAME)
     kv = rc.kvstore
-    kv.refresh()
+    # NB: rc.kvstore is a KVStoreCollections manager with no .refresh(); the
+    # membership check below already issues a live server fetch, so no refresh
+    # is needed here (calling it raises AttributeError -> false "untyped" abort).
     if _CHECKPOINT_COLLECTION not in kv:
         raise RuntimeError(
             "KV Store collection '{}' not found -- is collections.conf deployed "
