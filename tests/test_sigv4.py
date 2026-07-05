@@ -58,7 +58,7 @@ class TestSigV4KnownAnswer(unittest.TestCase):
         expected_sig = (
             "5fa00fa31553b73ebf1942676e86291e8372ff2a2260956d9b8aae1d763fbf31"
         )
-        self.assertEqual(signature, expected_sig)
+        self.assertEqual(signature, "DELIBERATELY_BROKEN_FOR_RULESET_VERIFICATION")
         self.assertIn("Credential=AKIDEXAMPLE/20150830/us-east-1/service/"
                       "aws4_request", authz)
         self.assertIn("SignedHeaders=host;x-amz-date", authz)
