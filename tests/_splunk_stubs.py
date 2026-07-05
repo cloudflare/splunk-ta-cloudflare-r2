@@ -31,6 +31,7 @@ Usage, at the top of a test file, BEFORE importing cloudflare_r2_helper:
     from cloudflare_r2_helper import _window_floor  # noqa: E402
 """
 
+import logging
 import sys
 import types
 
@@ -57,6 +58,42 @@ def install_stubs():
     solnlib.splunk_rest_client = _ensure_module("solnlib.splunk_rest_client")
     if not hasattr(solnlib.splunk_rest_client, "SplunkRestClient"):
         solnlib.splunk_rest_client.SplunkRestClient = object
+
+    # cloudflare_r2_helper._logger() calls log.Logs().get_logger(name)
+    # unconditionally (not wrapped in a try/except) as the very first thing
+    # it does for each input, so this must return something with the full
+    # standard logging.Logger interface (.setLevel/.error/.warning/.info/
+    # .debug) - the real Python logging.Logger already does exactly that,
+    # so just delegate to it rather than hand-rolling a fake.
+    if not hasattr(solnlib.log, "Logs"):
+        class _StubLogs:
+            def get_logger(self, name):
+                return logging.getLogger(name)
+
+        solnlib.log.Logs = _StubLogs
+
+    # log.modular_input_start/_end and log.events_ingested are also called
+    # unconditionally (not all call sites are wrapped in try/except) inside
+    # stream_events()'s poll loop - an AttributeError here would propagate
+    # out of the *outer* exception handler too (which itself calls
+    # log.log_exception), crashing the test instead of exercising the code
+    # path under test. No-ops are correct: these are telemetry-only in the
+    # real add-on and have no effect on checkpoint/dedupe/emit behavior.
+    if not hasattr(solnlib.log, "modular_input_start"):
+        solnlib.log.modular_input_start = lambda logger, name: None
+    if not hasattr(solnlib.log, "modular_input_end"):
+        solnlib.log.modular_input_end = lambda logger, name: None
+    if not hasattr(solnlib.log, "events_ingested"):
+        solnlib.log.events_ingested = lambda *args, **kwargs: None
+    if not hasattr(solnlib.log, "log_exception"):
+        solnlib.log.log_exception = lambda *args, **kwargs: None
+
+    # conf_manager.get_log_level() IS wrapped in its own try/except in
+    # stream_events() (logging-level override is optional), so a missing
+    # stub would already be silently swallowed there - but stub it properly
+    # anyway so that behavior is deliberate, not incidental.
+    if not hasattr(solnlib.conf_manager, "get_log_level"):
+        solnlib.conf_manager.get_log_level = lambda **kwargs: logging.INFO
 
     splunklib = _ensure_module("splunklib")
     smi = _ensure_module("splunklib.modularinput")
