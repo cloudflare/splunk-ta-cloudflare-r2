@@ -95,27 +95,18 @@ byte-offset tracking within a file.
 
 ## Known gaps for a production deployment
 
-### 1. Credential encryption — RESOLVED in the UCC build
-
-The legacy hand-rolled TA stored `secret_access_key` in `inputs.conf` in plaintext.
-The UCC build **resolves this by construction**: credentials live in a global **Account**
-whose secret field is marked `encrypted`, so UCC's generated REST handler routes it to
-`storage/passwords` at config-write time, and the input helper reads it back via `solnlib`.
-Result: **no plaintext credential at rest in Splunk conf files.**
-
-### 2. Splunk Cloud compatibility
+### Splunk Cloud compatibility
 
 Targeting Splunk Cloud (Victoria) + Cloud vetting via UCC. The stdlib client and the KV
 Store checkpoint (no app-local filesystem writes) are chosen partly for Cloud rules. Note:
 inputs require KV Store, so they must run on a heavy forwarder / IDM / standalone, **not a
 Universal Forwarder**. Minimum supported Splunk is **9.4**.
 
-### 3. TLS: `verify_ssl` + `ca_bundle`
-
-For networks that perform outbound TLS inspection (corporate MITM) on the R2 endpoint, the
-Account exposes a `ca_bundle` path (on-prem only — not usable on Splunk Cloud) fed to the
-stdlib client's `ssl` context, which is cleaner than the boolean `verify_ssl = false`
-disable. Prefer adding the inspection CA over disabling verification.
+<!-- Credential encryption and TLS verify_ssl/ca_bundle used to be listed here as
+     "known gaps" - both are resolved design decisions, not gaps, and duplicating
+     them under this heading was confusing. See the Architecture section above and
+     SECURITY.md for credential storage; see README.md's "TLS inspection and CA
+     bundles" section for the verify_ssl/ca_bundle guidance. -->
 
 ---
 
