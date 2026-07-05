@@ -33,7 +33,10 @@ jobs:
         # build, or in a real Splunk install).
         run: python3 -m py_compile package/bin/*.py
 
-      - name: SigV4 known-answer test
-        # Pure standard library, no network, no credentials. Verifies the
-        # r2client.py signer against AWS's official test vector.
-        run: python3 tests/test_sigv4.py
+      - name: Run test suite
+        # Discovers and runs every tests/test_*.py file automatically, so
+        # adding a new test file needs no workflow change here. No network,
+        # no credentials, no Splunk/R2 access - tests/_splunk_stubs.py stubs
+        # out the UCC/Splunk-supplied imports that cloudflare_r2_helper.py
+        # needs just to load (solnlib, splunklib, import_declare_test).
+        run: python3 -m unittest discover -s tests -v
