@@ -17,10 +17,16 @@ The highest-value contributions right now (see [DEVELOPMENT.md](DEVELOPMENT.md)
 for technical details):
 
 - **Splunk Cloud compatibility** testing and fixes
-- **Test coverage** - the R2 client's SigV4 signer has an offline known-answer
-  test (`tests/test_sigv4.py`); checkpointing logic in
-  `cloudflare_r2_helper.py` (dedupe, lookback pruning) still has no automated
-  unit tests
+- **Test coverage** - the R2 client's SigV4 signer, the pure helper functions
+  (`_window_floor`/`_normalize_prefix`/`_as_bool`), and the poll loop's
+  checkpoint/dedupe/prune logic in `cloudflare_r2_helper.py` are now covered
+  by 58 unit tests under `tests/` (run with
+  `python3 -m unittest discover -s tests`, or just open a PR - it runs
+  automatically in CI). Still untested: `validate_input()`'s input-config
+  validation, and `r2client.py`'s HTTP/XML/streaming methods
+  (`list_objects_v2`, `iter_object_keys`, `iter_object_lines`) beyond the
+  signing math itself - those currently only have live-integration
+  verification, not unit tests
 
 ## Code style
 
