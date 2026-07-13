@@ -320,7 +320,7 @@
     "meta": {
         "name": "TA_cloudflare_r2",
         "restRoot": "TA_cloudflare_r2",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "displayName": "Cloudflare R2 Log Ingestion",
         "schemaVersion": "0.0.9",
         "supportedThemes": [
