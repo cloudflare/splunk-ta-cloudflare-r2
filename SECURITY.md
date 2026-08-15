@@ -23,6 +23,10 @@ time the add-on stores it in Splunk's encrypted credential store
 it back from there at run time. No plaintext credential is written to the
 add-on's conf files or the app-local filesystem.
 
+The optional proxy password (Configuration > Settings > Proxy) is stored the
+same way - encrypted via the credential store, never written in plaintext to
+`ta_cloudflare_r2_settings.conf`.
+
 ### R2 API token scope
 
 When generating R2 API tokens for use with this add-on, scope them to:

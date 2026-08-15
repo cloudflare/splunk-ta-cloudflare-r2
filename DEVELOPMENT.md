@@ -16,6 +16,7 @@ Splunk UCC add-on (cloudflare_r2 input)
   │
   ├── bin/cloudflare_r2_helper.py  # inputHelperModule: top-level validate_input + stream_events
   │     ├── resolve account        # read secret from storage/passwords via solnlib
+  │     ├── resolve proxy settings # app-wide [proxy] stanza, ta_..._settings.conf (optional; fails open)
   │     ├── list new keys          # dedupe against KV Store processed-key set (+ lookback)
   │     ├── process object         # streaming gunzip → emit one event per NDJSON line
   │     └── checkpoint             # upsert processed key in KV Store (prune by lookback)
@@ -23,6 +24,7 @@ Splunk UCC add-on (cloudflare_r2 input)
   ├── bin/r2client.py              # stdlib-only R2 client — NO third-party deps
   │     ├── SigV4 signer           # hmac + hashlib (offline known-answer tested)
   │     ├── HTTPS transport        # urllib.request over stdlib ssl (retry + backoff)
+  │     ├── proxy support          # optional urllib.request.ProxyHandler; HTTP only, Basic auth only
   │     ├── list_objects_v2        # xml.etree parse, continuation-token pagination
   │     └── iter_object_lines      # gzip.GzipFile(fileobj=...) streaming, memory-safe
   │

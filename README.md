@@ -43,12 +43,15 @@ Cloudflare R2 bucket  →  ListObjectsV2 + GetObject  →  gunzip  →  Splunk i
 - Multiple Cloudflare accounts: credentials live in named **Accounts**; each
   input selects an account, so several Cloudflare accounts can feed one Splunk
   instance
+- Optional HTTP forward proxy support (app-wide, under **Configuration >
+  Settings**) for environments that route outbound traffic through a proxy
+  instead of opening direct internet access. See [Proxy support](#proxy-support).
 
 ---
 
 ## Installation
 
-1. Download `TA_cloudflare_r2-1.0.2.spl` from [Releases](../../releases)
+1. Download `TA_cloudflare_r2-1.1.0.spl` from [Releases](../../releases)
 2. In Splunk Web: **Apps > Manage Apps > Install app from file**
 3. Upload the `.spl` file and click **Upload**
 
@@ -143,6 +146,49 @@ key_prefix = gateway_dns/
 
 ---
 
+## Proxy support
+
+If the Splunk host that runs this add-on's input reaches the internet only
+through an outbound **HTTP forward proxy** (common in enterprises that avoid
+opening direct internet access from internal servers), configure it once
+under **Configuration > Settings > Proxy**. This is an **app-wide** setting
+(like the [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876)),
+not per-Account — every input in this add-on uses the same proxy.
+
+| Field | Description |
+|---|---|
+| Enable | Turn proxying on for this add-on |
+| Host | Proxy hostname or IP |
+| Port | Proxy port |
+| Username (optional) | Leave blank for an unauthenticated proxy |
+| Password (optional) | Stored encrypted via `storage/passwords`, same as the R2 Secret Access Key |
+
+Notes and scope:
+
+- **HTTP proxy only — no SOCKS4/5.** R2's S3-compatible API is reached
+  exclusively over HTTPS, so a SOCKS proxy is never actually required for
+  this add-on's traffic; adding SOCKS support would only add a third-party
+  dependency (`PySocks`) for a case that can't occur here.
+- **Authentication is HTTP Basic only** (username/password sent to the
+  proxy). **NTLM and Kerberos proxy authentication are not supported.** If
+  your proxy requires NTLM/Kerberos (common on Windows-domain-joined proxy
+  appliances), this feature will not authenticate successfully against it —
+  please open an issue if you hit this, since we don't yet have visibility
+  into how common that requirement is for this add-on's users.
+- If your proxy **also** performs TLS inspection/re-signing (an "SSL
+  bumping" proxy), you additionally need to trust its CA — see
+  [TLS inspection and CA bundles](#tls-inspection-and-ca-bundles) below.
+  Proxying and TLS trust are independent settings: Proxy config controls
+  *where* the connection goes, `ca_bundle_path` controls *which
+  certificate(s)* are trusted once it gets there.
+- Validated against a real R2 bucket through both an unauthenticated and a
+  username/password-authenticated proxy (including one that TLS-inspects,
+  per the point above) with zero duplicate events. Not yet validated against
+  a real enterprise proxy appliance in production — if you test this,
+  feedback is very welcome.
+
+---
+
 ## TLS inspection and CA bundles
 
 By default the add-on verifies R2's TLS certificate against the system trust
@@ -180,6 +226,9 @@ Notes:
   verification just works.
 - Unchecking **Verify SSL certificate** disables certificate validation
   entirely (insecure) and should only be a temporary diagnostic step.
+- This is independent of whether you route through a forward proxy. If your
+  network also requires a proxy to reach the internet at all, configure that
+  separately — see [Proxy support](#proxy-support) above.
 
 ---
 
@@ -229,6 +278,9 @@ reset only when you intend to backfill.
 
 - **Splunk Cloud is not a supported deployment target** - this add-on is built and
   tested for on-premises Splunk Enterprise only.
+- **Proxy support is HTTP only, with HTTP Basic authentication only** - no
+  SOCKS4/5, no NTLM/Kerberos proxy authentication. See
+  [Proxy support](#proxy-support).
 
 ---
 
