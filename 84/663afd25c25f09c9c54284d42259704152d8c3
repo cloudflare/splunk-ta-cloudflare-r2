@@ -1,0 +1,19 @@
+globalConfig.json
+  s_5aa258ef416e41::t_2610b1c1c3d61f 117-184,391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "84663afd25c25f09c9c54284d42259704152d8c3",
+  "prompts": {},
+  "sessions": {
+    "s_5aa258ef416e41": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0e2760428ffe0Acz6aA4KD0fan",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Michael Kowal <mkowal@cloudflare.com>"
+    }
+  }
+}
