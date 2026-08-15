@@ -154,7 +154,8 @@ class R2Client(object):
 
     def __init__(self, account_id, access_key, secret_key, region="auto",
                  verify_ssl=True, ca_bundle=None, timeout=60,
-                 max_attempts=5, backoff_base=0.5, backoff_cap=20.0):
+                 max_attempts=5, backoff_base=0.5, backoff_cap=20.0,
+                 proxy_url=None):
         self.host = "{}.r2.cloudflarestorage.com".format(account_id)
         self.endpoint = "https://" + self.host
         self.access_key = access_key
@@ -173,6 +174,25 @@ class R2Client(object):
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
         self._ssl_ctx = ctx
+
+        # HTTP proxy support (globalConfig proxyTab; see cloudflare_r2_helper.py).
+        # HTTP only -- R2's S3-compatible API is HTTPS-only, so there is no
+        # SOCKS4/5 use case here, and adding SOCKS support would require a
+        # third-party dependency (PySocks) this client deliberately avoids.
+        # Credentials, if any, are embedded in the proxy URL
+        # (http://user:pass@host:port) -- the standard stdlib ProxyHandler
+        # pattern; no extra library needed.
+        # A proxy that terminates/re-signs TLS (a common enterprise "SSL
+        # bump" setup, not just a blind CONNECT relay) still works exactly
+        # like today's TLS-inspection support: point ca_bundle at the
+        # proxy's own CA. The proxy is transport-layer only and has no
+        # bearing on which cert ends up being validated.
+        handlers = [urllib.request.HTTPSHandler(context=self._ssl_ctx)]
+        if proxy_url:
+            handlers.append(
+                urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url})
+            )
+        self._opener = urllib.request.build_opener(*handlers)
 
     def _sleep_for(self, attempt):
         # exponential backoff with full jitter, capped
@@ -226,8 +246,7 @@ class R2Client(object):
             # Re-sign every attempt (x-amz-date must be fresh, else 403 skew).
             req = self._build_signed_request(method, path, query, body)
             try:
-                return urllib.request.urlopen(
-                    req, timeout=self.timeout, context=self._ssl_ctx)
+                return self._opener.open(req, timeout=self.timeout)
             except urllib.error.HTTPError as exc:
                 body_txt = exc.read().decode("utf-8", "replace")
                 code = _parse_s3_error_code(body_txt)

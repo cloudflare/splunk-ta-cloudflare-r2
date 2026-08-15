@@ -473,5 +473,92 @@ class TestAccountWiring(StreamEventsTestCase):
         self.assertEqual(captured["secret_key"], FAKE_ACCOUNT["secret_access_key"])
 
 
+class TestProxyWiring(StreamEventsTestCase):
+    """Proxy is an app-wide Settings-tab setting (not per-Account) -- see
+    _get_proxy_settings/_build_proxy_url in cloudflare_r2_helper.py. These
+    tests mock _get_proxy_settings directly (same level as _get_account is
+    mocked in StreamEventsTestCase.setUp) rather than conf_manager, since the
+    conf_manager/REST-credential-realm plumbing itself has no unit-testable
+    surface without a real Splunk instance -- that part is covered by the
+    live 10.2/10.4-style manual validation, not this suite."""
+
+    def _run_and_capture_r2client_kwargs(self):
+        captured = {}
+
+        def _fake_r2client_ctor(**kwargs):
+            captured.update(kwargs)
+            return self.fake_client
+
+        with mock.patch.object(helper, "R2Client", side_effect=_fake_r2client_ctor):
+            self.run_stream_events()
+        return captured
+
+    def test_no_proxy_configured_passes_none(self):
+        with mock.patch.object(helper, "_get_proxy_settings", return_value=None):
+            captured = self._run_and_capture_r2client_kwargs()
+        self.assertIsNone(captured["proxy_url"])
+
+    def test_proxy_disabled_passes_none(self):
+        # _get_proxy_settings itself is documented to return None when
+        # proxy_enabled is falsy, but this confirms stream_events doesn't
+        # independently re-check enabled/disabled -- it trusts whatever
+        # _get_proxy_settings hands back.
+        with mock.patch.object(helper, "_get_proxy_settings", return_value=None):
+            captured = self._run_and_capture_r2client_kwargs()
+        self.assertIsNone(captured["proxy_url"])
+
+    def test_proxy_enabled_builds_url_and_passes_through(self):
+        proxy = {
+            "proxy_enabled": "1",
+            "proxy_url": "proxy.example.com",
+            "proxy_port": "3128",
+            "proxy_username": "",
+            "proxy_password": "",
+        }
+        with mock.patch.object(helper, "_get_proxy_settings", return_value=proxy):
+            captured = self._run_and_capture_r2client_kwargs()
+        self.assertEqual(captured["proxy_url"], "http://proxy.example.com:3128")
+
+    def test_proxy_enabled_with_auth_builds_url_with_credentials(self):
+        proxy = {
+            "proxy_enabled": "1",
+            "proxy_url": "proxy.example.com",
+            "proxy_port": "3128",
+            "proxy_username": "alice",
+            "proxy_password": "hunter2",
+        }
+        with mock.patch.object(helper, "_get_proxy_settings", return_value=proxy):
+            captured = self._run_and_capture_r2client_kwargs()
+        self.assertEqual(
+            captured["proxy_url"],
+            "http://alice:hunter2@proxy.example.com:3128",
+        )
+
+    def test_get_proxy_settings_own_try_except_is_load_bearing(self):
+        # stream_events' per-input body has an outer catch-all (see
+        # cloudflare_r2_helper.py) that logs-and-continues on ANY unhandled
+        # exception -- including one from _get_proxy_settings. That means
+        # _get_proxy_settings' OWN internal try/except is the only thing
+        # standing between "proxy resolution hiccup" and "the whole input
+        # silently aborts with zero events ingested", which would make an
+        # optional, app-wide proxy setting into a hard dependency for every
+        # ingest run. This is a regression tripwire for that internal
+        # try/except, not a test of the (deliberately real, unmocked)
+        # ConfManager plumbing -- that's covered by live manual validation.
+        self.fake_client.keys = [_key_within_lookback_window("abc.log.gz")]
+        self.fake_client.lines_by_key = {
+            self.fake_client.keys[0]: ["line1"]
+        }
+        with mock.patch.object(
+            helper, "_get_proxy_settings", side_effect=Exception("REST unreachable")
+        ):
+            writer = self.run_stream_events()
+        self.assertEqual(
+            writer.events, [],
+            "a raised (not internally-caught) proxy resolution error "
+            "aborted the whole input instead of failing open to no-proxy",
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

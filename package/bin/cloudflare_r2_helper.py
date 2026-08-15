@@ -45,6 +45,7 @@ Design:
 
 import datetime
 import json
+import urllib.parse
 import zlib
 
 import import_declare_test  # noqa: F401  (UCC-generated sys.path setup for lib/)
@@ -137,6 +138,69 @@ def _as_bool(value, default=True):
     if value is None:
         return default
     return str(value).strip().lower() not in ("0", "false", "no", "")
+
+
+def _get_proxy_settings(session_key):
+    """Return the [proxy] stanza dict from ta_cloudflare_r2_settings.conf
+    (proxy_password decrypted), or None if disabled/unconfigured/unreadable.
+
+    proxy_password is credential-vault-encrypted (encrypted=True in the
+    UCC-generated REST handler) exactly the way secret_access_key is for the
+    account conf -- reading it through this same realm-scoped ConfManager
+    pattern returns it already decrypted, no separate solnlib lookup needed
+    (confirmed against the generated TA_cloudflare_r2_rh_settings.py).
+
+    Settings tab is optional / app-wide (not per-account) -- if it's missing,
+    untyped, or KV/REST is unreachable, we fail OPEN to "no proxy" rather
+    than aborting the input, since a proxy is an opt-in convenience, not a
+    correctness requirement like the KV Store checkpoint guard is.
+    """
+    try:
+        cfm = conf_manager.ConfManager(
+            session_key,
+            ADDON_NAME,
+            realm="__REST_CREDENTIAL__#{}#configs/conf-{}".format(
+                ADDON_NAME, _SETTINGS_CONF
+            ),
+        )
+        proxy = cfm.get_conf(_SETTINGS_CONF).get("proxy")
+    except Exception:
+        return None
+    if not proxy or not _as_bool(proxy.get("proxy_enabled"), default=False):
+        return None
+    return proxy
+
+
+def _build_proxy_url(proxy):
+    """Build an http://[user:pass@]host:port URL for urllib's ProxyHandler
+    from a resolved [proxy] stanza dict. Returns None if host/port are
+    missing (treated the same as "proxy disabled").
+
+    HTTP proxy only -- no SOCKS4/5 -- because R2's S3-compatible API is
+    HTTPS-only, so there is no use case here that a plain HTTP CONNECT-style
+    proxy can't already serve (see r2client.py for the same rationale).
+    The scheme here ("http://") is the PROXY'S OWN listener protocol, not
+    the protocol of the traffic being proxied -- this is the standard
+    convention (matches http_proxy/https_proxy env vars, mitmproxy's
+    default explicit mode, etc).
+
+    Username/password are .strip()'d and percent-encoded (urllib.parse.quote)
+    so a ':' or '@' in either doesn't get misread as the URL's own
+    user:pass@host delimiters.
+    """
+    host = (proxy.get("proxy_url") or "").strip()
+    port = (proxy.get("proxy_port") or "").strip()
+    if not host or not port:
+        return None
+    user = (proxy.get("proxy_username") or "").strip()
+    password = (proxy.get("proxy_password") or "").strip()
+    auth = ""
+    if user:
+        auth = urllib.parse.quote(user, safe="")
+        if password:
+            auth += ":" + urllib.parse.quote(password, safe="")
+        auth += "@"
+    return "http://{}{}:{}".format(auth, host, port)
 
 
 def _normalize_prefix(key_prefix):
@@ -280,12 +344,21 @@ def stream_events(inputs: smi.InputDefinition, event_writer: smi.EventWriter):
             # ValueError|InvalidURL from urllib) but is equally avoidable
             # here. key_prefix/bucket_name/ca_bundle_path already get this
             # treatment elsewhere - this closes the same gap for credentials.
+            # Proxy is an app-wide setting (Settings tab), not per-account --
+            # matches how the AWS TA scopes its own proxy config. Fails open
+            # to "no proxy" on any resolution problem; see
+            # _get_proxy_settings' docstring for why that's the right default
+            # here (unlike the KV Store guard above, which fails closed).
+            proxy_settings = _get_proxy_settings(session_key)
+            proxy_url = _build_proxy_url(proxy_settings) if proxy_settings else None
+
             client = R2Client(
                 account_id=(account.get("account_id") or "").strip(),
                 access_key=(account.get("access_key_id") or "").strip(),
                 secret_key=(account.get("secret_access_key") or "").strip(),
                 verify_ssl=_as_bool(account.get("verify_ssl"), default=True),
                 ca_bundle=(account.get("ca_bundle_path") or "").strip() or None,
+                proxy_url=proxy_url,
             )
 
             bucket = input_item.get("bucket_name")

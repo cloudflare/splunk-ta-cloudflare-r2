@@ -115,6 +115,74 @@
                     ]
                 },
                 {
+                    "name": "proxy",
+                    "title": "Proxy",
+                    "entity": [
+                        {
+                            "type": "checkbox",
+                            "label": "Enable",
+                            "field": "proxy_enabled"
+                        },
+                        {
+                            "type": "text",
+                            "label": "Host",
+                            "field": "proxy_url",
+                            "required": true,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Max host length is 4096.",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "Port",
+                            "field": "proxy_port",
+                            "required": true,
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [
+                                        1,
+                                        65535
+                                    ],
+                                    "isInteger": true
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "Username",
+                            "field": "proxy_username",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Max length of username is 50.",
+                                    "minLength": 0,
+                                    "maxLength": 50
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "Password",
+                            "field": "proxy_password",
+                            "encrypted": true,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Max length of password is 8192.",
+                                    "minLength": 0,
+                                    "maxLength": 8192
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
                     "type": "loggingTab"
                 }
             ]
@@ -320,7 +388,7 @@
     "meta": {
         "name": "TA_cloudflare_r2",
         "restRoot": "TA_cloudflare_r2",
-        "version": "1.0.2",
+        "version": "1.1.0",
         "displayName": "Cloudflare R2 Log Ingestion",
         "schemaVersion": "0.0.9",
         "supportedThemes": [

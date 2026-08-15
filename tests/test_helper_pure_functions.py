@@ -30,6 +30,7 @@ install_stubs()
 
 from cloudflare_r2_helper import (  # noqa: E402
     _as_bool,
+    _build_proxy_url,
     _normalize_prefix,
     _r2_error_hint,
     _window_floor,
@@ -166,6 +167,79 @@ class TestWindowFloor(unittest.TestCase):
         result = _window_floor("some_prefix/", 1)
         self.assertRegex(
             result, r"^some_prefix/\d{8}/\d{8}T\d{6}Z$"
+        )
+
+
+class TestBuildProxyUrl(unittest.TestCase):
+    """_build_proxy_url() turns a resolved [proxy] stanza dict into an
+    http://[user:pass@]host:port URL for urllib's ProxyHandler. See
+    _get_proxy_settings/_build_proxy_url's docstrings in
+    cloudflare_r2_helper.py for why the scheme is always "http://" here
+    regardless of the traffic being proxied (that's the proxy's own listener
+    protocol, a separate question from what's inside the tunnel)."""
+
+    def test_host_and_port_only(self):
+        proxy = {"proxy_url": "proxy.example.com", "proxy_port": "8080"}
+        self.assertEqual(
+            _build_proxy_url(proxy), "http://proxy.example.com:8080"
+        )
+
+    def test_with_username_and_password(self):
+        proxy = {
+            "proxy_url": "proxy.example.com",
+            "proxy_port": "8080",
+            "proxy_username": "alice",
+            "proxy_password": "hunter2",
+        }
+        self.assertEqual(
+            _build_proxy_url(proxy),
+            "http://alice:hunter2@proxy.example.com:8080",
+        )
+
+    def test_username_only_no_password(self):
+        proxy = {
+            "proxy_url": "proxy.example.com",
+            "proxy_port": "8080",
+            "proxy_username": "alice",
+            "proxy_password": "",
+        }
+        self.assertEqual(
+            _build_proxy_url(proxy), "http://alice@proxy.example.com:8080"
+        )
+
+    def test_credentials_with_reserved_characters_are_percent_encoded(self):
+        # A literal ':' or '@' in a username/password would otherwise be
+        # misread as the URL's own user:pass@host delimiters.
+        proxy = {
+            "proxy_url": "proxy.example.com",
+            "proxy_port": "3128",
+            "proxy_username": "dom\\alice",
+            "proxy_password": "p@ss:word",
+        }
+        url = _build_proxy_url(proxy)
+        self.assertEqual(
+            url, "http://dom%5Calice:p%40ss%3Aword@proxy.example.com:3128"
+        )
+
+    def test_missing_host_returns_none(self):
+        self.assertIsNone(_build_proxy_url({"proxy_port": "8080"}))
+
+    def test_missing_port_returns_none(self):
+        self.assertIsNone(_build_proxy_url({"proxy_url": "proxy.example.com"}))
+
+    def test_empty_dict_returns_none(self):
+        self.assertIsNone(_build_proxy_url({}))
+
+    def test_whitespace_in_host_and_credentials_is_stripped(self):
+        proxy = {
+            "proxy_url": "  proxy.example.com  ",
+            "proxy_port": " 8080 ",
+            "proxy_username": " alice ",
+            "proxy_password": " hunter2 ",
+        }
+        self.assertEqual(
+            _build_proxy_url(proxy),
+            "http://alice:hunter2@proxy.example.com:8080",
         )
 
 
