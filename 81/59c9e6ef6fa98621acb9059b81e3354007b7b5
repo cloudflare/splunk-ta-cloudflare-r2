@@ -1,0 +1,19 @@
+.gitignore
+  s_cc7f90132bfab5::t_aad75959b1a110 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8159c9e6ef6fa98621acb9059b81e3354007b7b5",
+  "prompts": {},
+  "sessions": {
+    "s_cc7f90132bfab5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0e267f283ffensE1d6DcksA4MX",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Michael Kowal <mkowal@cloudflare.com>"
+    }
+  }
+}
