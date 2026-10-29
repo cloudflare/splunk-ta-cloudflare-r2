@@ -34,6 +34,13 @@ Notes for the TA:
   - verify_ssl / ca_bundle mirror the TA's input options. Default verify=True.
     A TLS-inspecting network (corporate MITM) will fail default verification;
     that is when verify_ssl=false or a ca_bundle is required.
+  - strict_tls mirrors the TA's "allow_nonstrict_tls" account option (default
+    True = strict). Only relevant on Python 3.13+, where
+    ssl.create_default_context() enables VERIFY_X509_STRICT by default; some
+    TLS-inspecting proxies issue certs that fail that specific RFC 5280
+    profile check even though they are otherwise trustworthy. Setting
+    strict_tls=False clears just that flag -- CERT_REQUIRED/check_hostname
+    stay on, so this is narrower than verify_ssl=False.
 """
 
 import datetime
@@ -155,7 +162,7 @@ class R2Client(object):
     def __init__(self, account_id, access_key, secret_key, region="auto",
                  verify_ssl=True, ca_bundle=None, timeout=60,
                  max_attempts=5, backoff_base=0.5, backoff_cap=20.0,
-                 proxy_url=None):
+                 proxy_url=None, strict_tls=True):
         self.host = "{}.r2.cloudflarestorage.com".format(account_id)
         self.endpoint = "https://" + self.host
         self.access_key = access_key
@@ -173,6 +180,19 @@ class R2Client(object):
         if not verify_ssl:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
+        elif not strict_tls and hasattr(ssl, "VERIFY_X509_STRICT"):
+            # Python 3.13+ turns on VERIFY_X509_STRICT by default in
+            # create_default_context(), which enforces RFC 5280 profile
+            # checks (e.g. a leaf cert must carry an Authority Key
+            # Identifier extension). Some enterprise TLS-inspecting proxies
+            # mint re-signed certs that are valid for normal purposes but
+            # fail this stricter check, surfacing as
+            # "CERTIFICATE_VERIFY_FAILED: Missing Authority Key Identifier".
+            # Clearing just this flag keeps full chain + hostname
+            # verification (still CERT_REQUIRED / check_hostname=True);
+            # it only relaxes the stricter X.509 profile conformance added
+            # in 3.13. See github.com/cloudflare/splunk-ta-cloudflare-r2/issues/3
+            ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
         self._ssl_ctx = ctx
 
         # HTTP proxy support (globalConfig proxyTab; see cloudflare_r2_helper.py).

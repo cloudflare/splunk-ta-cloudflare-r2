@@ -74,6 +74,7 @@ In the add-on's UI, open **Configuration > Cloudflare R2 Account > Add**.
 | R2 Secret Access Key | Shown once at token creation. Stored encrypted via `storage/passwords`. |
 | Verify SSL certificate | Keep enabled (default). For TLS-inspection networks, keep it on and set the CA bundle path below rather than disabling it. Unchecking disables certificate validation entirely (insecure). |
 | CA bundle path (on-prem only) | Absolute path, on the Splunk host, to your inspection proxy's root CA (PEM). Use when outbound traffic is TLS-inspected; preferred over disabling verification. Not usable on Splunk Cloud (locked filesystem). See [TLS inspection and CA bundles](#tls-inspection-and-ca-bundles). |
+| Allow certificates with relaxed X.509 validation | Leave unchecked (default). Only enable if you see a `Missing Authority Key Identifier` TLS error after setting a CA bundle above — see [Strict certificate validation (Python 3.13+)](#strict-certificate-validation-python-313). |
 
 The R2 API token needs **Object Read** permission on the target bucket.
 
@@ -229,6 +230,36 @@ Notes:
 - This is independent of whether you route through a forward proxy. If your
   network also requires a proxy to reach the internet at all, configure that
   separately — see [Proxy support](#proxy-support) above.
+
+### Strict certificate validation (Python 3.13+)
+
+Splunk versions whose bundled Python is 3.13 or newer (confirmed: Splunk
+10.4's `python3`) enable OpenSSL's strict X.509 profile checks
+(`ssl.VERIFY_X509_STRICT`) by default. This is a Python-level security
+hardening change, not something this add-on opts into. In rare cases, a
+TLS-inspecting proxy's re-signed certificates are valid for normal purposes
+but fail this specific, stricter RFC 5280 profile check (most commonly: the
+proxy's leaf cert is missing an Authority Key Identifier extension). If
+you've already configured a **CA bundle path** above and still see:
+
+```
+[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed:
+Missing Authority Key Identifier
+```
+
+check **Allow certificates with relaxed X.509 validation** on the Account.
+This clears only the strict X.509 profile check — certificate chain
+verification and hostname verification are unaffected and remain fully
+enforced against your configured CA bundle. It is a much narrower relaxation
+than unchecking **Verify SSL certificate**, which disables all verification.
+
+If possible, the better long-term fix is to have your network/security team
+regenerate the proxy's certificates with a proper Authority Key Identifier
+extension, or exempt `*.r2.cloudflarestorage.com` from TLS inspection
+entirely — this setting exists as a pragmatic workaround for environments
+where that isn't quickly achievable. See
+[issue #3](https://github.com/cloudflare/splunk-ta-cloudflare-r2/issues/3)
+for the original report.
 
 ---
 

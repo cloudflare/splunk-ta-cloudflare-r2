@@ -111,6 +111,13 @@
                                     "maxLength": 4096
                                 }
                             ]
+                        },
+                        {
+                            "type": "checkbox",
+                            "label": "Allow certificates with relaxed X.509 validation",
+                            "field": "allow_nonstrict_tls",
+                            "defaultValue": false,
+                            "help": "Enable only if you see 'CERTIFICATE_VERIFY_FAILED: Missing Authority Key Identifier' or similar from a TLS-inspecting proxy. Certificate chain and hostname verification still apply -- this only relaxes strict RFC 5280 checks added in Python 3.13. Prefer fixing certificate generation on your proxy first."
                         }
                     ]
                 },
@@ -388,13 +395,12 @@
     "meta": {
         "name": "TA_cloudflare_r2",
         "restRoot": "TA_cloudflare_r2",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "displayName": "Cloudflare R2 Log Ingestion",
-        "schemaVersion": "0.0.9",
+        "schemaVersion": "0.0.10",
         "supportedThemes": [
             "light",
             "dark"
-        ],
-        "_uccVersion": "5.52.0"
+        ]
     }
 }

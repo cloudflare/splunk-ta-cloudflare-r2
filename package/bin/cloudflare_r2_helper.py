@@ -359,6 +359,9 @@ def stream_events(inputs: smi.InputDefinition, event_writer: smi.EventWriter):
                 verify_ssl=_as_bool(account.get("verify_ssl"), default=True),
                 ca_bundle=(account.get("ca_bundle_path") or "").strip() or None,
                 proxy_url=proxy_url,
+                strict_tls=not _as_bool(
+                    account.get("allow_nonstrict_tls"), default=False
+                ),
             )
 
             bucket = input_item.get("bucket_name")

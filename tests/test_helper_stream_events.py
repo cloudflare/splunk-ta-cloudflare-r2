@@ -442,6 +442,59 @@ class TestAccountWiring(StreamEventsTestCase):
 
         self.assertFalse(captured["verify_ssl"])
 
+    def test_strict_tls_defaults_true_when_allow_nonstrict_tls_unset(self):
+        # FAKE_ACCOUNT has no allow_nonstrict_tls key at all, mirroring an
+        # account created before this option existed.
+        captured = {}
+
+        def _fake_r2client_ctor(**kwargs):
+            captured.update(kwargs)
+            return self.fake_client
+
+        with mock.patch.object(helper, "R2Client", side_effect=_fake_r2client_ctor):
+            self.run_stream_events()
+
+        self.assertTrue(captured["strict_tls"])
+
+    def test_allow_nonstrict_tls_true_flips_strict_tls_false(self):
+        # github.com/cloudflare/splunk-ta-cloudflare-r2/issues/3: Python
+        # 3.13+ enables ssl.VERIFY_X509_STRICT by default, which some
+        # TLS-inspecting proxies' re-signed certs fail (missing Authority
+        # Key Identifier). allow_nonstrict_tls=true must flip strict_tls to
+        # False so r2client.R2Client relaxes just that check.
+        with mock.patch.object(
+            helper,
+            "_get_account",
+            return_value=dict(FAKE_ACCOUNT, allow_nonstrict_tls="true"),
+        ):
+            captured = {}
+
+            def _fake_r2client_ctor(**kwargs):
+                captured.update(kwargs)
+                return self.fake_client
+
+            with mock.patch.object(helper, "R2Client", side_effect=_fake_r2client_ctor):
+                self.run_stream_events()
+
+        self.assertFalse(captured["strict_tls"])
+
+    def test_allow_nonstrict_tls_false_keeps_strict_tls_true(self):
+        with mock.patch.object(
+            helper,
+            "_get_account",
+            return_value=dict(FAKE_ACCOUNT, allow_nonstrict_tls="false"),
+        ):
+            captured = {}
+
+            def _fake_r2client_ctor(**kwargs):
+                captured.update(kwargs)
+                return self.fake_client
+
+            with mock.patch.object(helper, "R2Client", side_effect=_fake_r2client_ctor):
+                self.run_stream_events()
+
+        self.assertTrue(captured["strict_tls"])
+
     def test_credential_fields_are_stripped_of_whitespace(self):
         # Regression test for a real customer-reported bug: a leading/
         # trailing space or newline in any of these three fields (e.g. from

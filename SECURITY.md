@@ -41,3 +41,15 @@ The `verify_ssl` parameter defaults to `true`. Only set it to `false` if your
 network performs TLS inspection on outbound traffic and you have confirmed the
 inspection CA is from your own organization. Disabling SSL verification exposes
 the connection to man-in-the-middle attacks.
+
+The `allow_nonstrict_tls` parameter defaults to `false` (strict). On Python
+3.13+ (the bundled interpreter on Splunk 10.4+), `ssl.create_default_context()`
+enables OpenSSL's strict X.509 profile checks (`VERIFY_X509_STRICT`) by
+default. Setting `allow_nonstrict_tls` to `true` clears only that flag —
+`verify_mode` stays `CERT_REQUIRED` and `check_hostname` stays enabled, so the
+certificate chain (against the configured CA bundle) and hostname are still
+fully verified. This is a narrower, lower-risk relaxation than `verify_ssl`,
+scoped to RFC 5280 profile strictness rather than verification as a whole;
+enable it only to work around a TLS-inspecting proxy whose re-signed
+certificates fail that specific check (e.g. a missing Authority Key
+Identifier extension).
