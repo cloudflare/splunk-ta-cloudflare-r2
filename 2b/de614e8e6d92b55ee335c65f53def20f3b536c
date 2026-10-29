@@ -1,0 +1,20 @@
+DEVELOPMENT.md
+  s_cc7f90132bfab5::t_6b0560b2bf2790 171,175-189
+  s_cc7f90132bfab5::t_7800a6463031d6 190-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2bde614e8e6d92b55ee335c65f53def20f3b536c",
+  "prompts": {},
+  "sessions": {
+    "s_cc7f90132bfab5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0e267f283ffensE1d6DcksA4MX",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Michael Kowal <mkowal@cloudflare.com>"
+    }
+  }
+}
