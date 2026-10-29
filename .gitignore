@@ -42,6 +42,7 @@ AGENT_PROMPT.md
 MAINTENANCE.md
 CSUP_RUNBOOK.md
 UCC_EXECUTION_PLAN.md
+BOTO3_UPGRADE_2027.md
 
 # AppInspect report outputs (transient scan artifacts)
 appinspect_precert.txt
