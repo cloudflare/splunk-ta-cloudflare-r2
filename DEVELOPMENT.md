@@ -168,8 +168,25 @@ ucc-gen package --path output/TA_cloudflare_r2
 ### Run AppInspect
 
 ```bash
-pip install splunk-appinspect
+pip install --upgrade splunk-appinspect
 splunk-appinspect inspect TA_cloudflare_r2-1.0.1.spl --mode precert
+```
+
+**Always upgrade `splunk-appinspect` before a release check, including in any
+cached/local Docker image.** Splunkbase runs new checks against the latest
+published version as soon as it's released, and a stale local copy can pass
+cleanly while the real Splunkbase submission catches something new (observed
+in practice at least twice: local precert green, submission caught an issue
+the cached version's checks didn't have yet). If using a local image, rebuild
+it rather than reusing an old one:
+
+```bash
+docker build -t cf-appinspect:local -f - . <<'DOCKERFILE'
+FROM python:3.9-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libmagic1 && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir splunk-appinspect
+ENTRYPOINT ["splunk-appinspect"]
+DOCKERFILE
 ```
 
 ---
