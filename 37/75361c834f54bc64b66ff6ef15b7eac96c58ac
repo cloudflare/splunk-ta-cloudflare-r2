@@ -1,0 +1,38 @@
+tests/test_helper_stream_events.py
+  s_cc7f90132bfab5::t_f38d7169c7f890 445-497
+package/app.manifest
+  s_cc7f90132bfab5::t_3a1798297a7886 8
+README.md
+  s_cc7f90132bfab5::t_5c8fc02e50bda9 234-263
+  s_cc7f90132bfab5::t_90ef13a5f95edb 77
+SECURITY.md
+  s_cc7f90132bfab5::t_2f6739d40ac85e 44-55
+package/bin/cloudflare_r2_helper.py
+  s_cc7f90132bfab5::t_de16a75b8f523b 362-364
+package/bin/r2client.py
+  s_cc7f90132bfab5::t_c24973ab1412f5 165
+  s_cc7f90132bfab5::t_3c3a8b10938ea1 183-195
+  s_cc7f90132bfab5::t_1224e339d41242 37-43
+globalConfig.json
+  s_cc7f90132bfab5::t_8b002d7606f848 398
+  s_cc7f90132bfab5::t_e37b52c0ed6470 400,404
+  s_cc7f90132bfab5::t_b410c81074f4a2 114-120
+tests/test_r2client_ssl.py
+  s_cc7f90132bfab5::t_4f9d4979ed8c1f 1-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3775361c834f54bc64b66ff6ef15b7eac96c58ac",
+  "prompts": {},
+  "sessions": {
+    "s_cc7f90132bfab5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0e267f283ffensE1d6DcksA4MX",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Michael Kowal <mkowal@cloudflare.com>"
+    }
+  }
+}
