@@ -1,0 +1,19 @@
+globalConfig.json
+  s_cc7f90132bfab5::t_d9212ffe571d1a 400,404-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "642be2f74740dbca16cc949f96ce8aff45cd7223",
+  "prompts": {},
+  "sessions": {
+    "s_cc7f90132bfab5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0e267f283ffensE1d6DcksA4MX",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Michael Kowal <mkowal@cloudflare.com>"
+    }
+  }
+}
