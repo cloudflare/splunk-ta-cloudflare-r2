@@ -9,13 +9,20 @@ on:
 jobs:
   test:
     name: Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # 3.9 = the add-on's minimum supported Python (Splunk 9.4).
-        # 3.13 = the ceiling declared in python.required (see additional_packaging.py).
-        python-version: ["3.9", "3.13"]
+        include:
+          # 3.9 = the add-on's minimum supported Python (Splunk 9.4). Pinned
+          # to ubuntu-22.04: GitHub's ubuntu-latest moved to 26.04, which
+          # actions/setup-python cannot install Python 3.9 on (confirmed
+          # 2026-11-20 - this is why CI broke on an otherwise untouched repo).
+          - python-version: "3.9"
+            os: ubuntu-22.04
+          # 3.13 = the ceiling declared in python.required (see additional_packaging.py).
+          - python-version: "3.13"
+            os: ubuntu-latest
 
     steps:
       - name: Checkout
