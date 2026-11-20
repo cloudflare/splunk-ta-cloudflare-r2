@@ -127,6 +127,25 @@ sourcetype = cloudflare:json
 index = cloudflare_logs
 ```
 
+### Key prefix must lead directly into the date folder
+
+Each input's `key_prefix` must be the exact path segment that comes
+immediately before the Logpush date folder, for example `gateway_dns/` in
+`gateway_dns/20260608/...`. This lets the add-on compute a day-based lower
+bound for each poll's object listing, so only recent objects get scanned.
+
+**Do not point a single input at a bucket root that holds multiple,
+differently-prefixed datasets** (for example several zones, each in its own
+subfolder: `zone-a/20260608/...` and `zone-b/20260608/...`, with no shared
+prefix). With `key_prefix` left blank in that layout, the computed lower
+bound sorts below every real object key, so every poll lists the entire
+bucket history instead of just the lookback window. Objects outside the
+lookback window then get re-ingested once their checkpoint entry is pruned,
+producing duplicate events in Splunk.
+
+The fix is the pattern already shown above: create one input per dataset,
+with `key_prefix` set to that dataset's own subfolder.
+
 ### Multiple Cloudflare accounts
 
 Create one Account per Cloudflare account, then point each input at the
@@ -312,6 +331,10 @@ reset only when you intend to backfill.
 - **Proxy support is HTTP only, with HTTP Basic authentication only** - no
   SOCKS4/5, no NTLM/Kerberos proxy authentication. See
   [Proxy support](#proxy-support).
+- **One input cannot span a bucket root holding multiple, differently-prefixed
+  datasets** (for example several zones, each in its own subfolder) - this
+  breaks the add-on's date-based poll windowing and causes duplicate events.
+  See [Key prefix must lead directly into the date folder](#key-prefix-must-lead-directly-into-the-date-folder).
 
 ---
 
